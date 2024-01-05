@@ -5,12 +5,12 @@ import math
 # Define the spin_slots function
 def spin_slots():
     symbols = {
-        'Cherry': {'multiplier': 1.5, 'match_2': 10},
-        'Lemon': {'multiplier': 1.3, 'match_2': 5},
-        'Orange': {'multiplier': 1.4, 'match_2': 8},
-        'Plum': {'multiplier': 1.6, 'match_2': 15},
-        'Bell': {'multiplier': 1.8, 'match_2': 20},
-        'Bar': {'multiplier': 2.0, 'match_2': 25},
+        'Cherry': {'multiplier': 0.8, 'match_2': 10},
+        'Lemon': {'multiplier': 0.8, 'match_2': 5},
+        'Orange': {'multiplier': 1.0, 'match_2': 8},
+        'Plum': {'multiplier': 1.4, 'match_2': 15},
+        'Bell': {'multiplier': 1.5, 'match_2': 20},
+        'Bar': {'multiplier': 1.8, 'match_2': 25},
         'Seven': {'multiplier': 2.5, 'match_2': 30}
     }
 
