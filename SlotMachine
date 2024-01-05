@@ -48,6 +48,7 @@ def spin_slots():
 
     return total_win
 
+
 # Function to display bet factor goals
 def display_bet_factor_goals(balance):
     goals = [0.1, 0.25, 0.5, 0.75]  # Bet factor goals (10%, 25%, 50%, 75%)
@@ -75,7 +76,7 @@ def play_slots(bet, balance, prev_winnings=0):
     percentage_bonus = 0
     for goal in goals_reached:
         if bet_percentage >= goal:
-            bonus = goal * bet
+            bonus = goal / 10 * bet
             percentage_bonus += bonus
             print(f"Congratulations! You've reached the {int(goal * 100)}% bet factor goal. Bonus: ${bonus:.2f}")
 
