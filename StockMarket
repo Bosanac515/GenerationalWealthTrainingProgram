@@ -7,6 +7,11 @@ from colorama import Fore, Style
 import matplotlib.pyplot as plt
 import time
 
+'''
+Run this on GitHub codespaces
+Add these extensions: Colorama-Snippets, Pip-packages, Pylance, Python, Python Image Preview
+'''
+
 # Constants
 STOCK_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA']
 SAVE_FILE = 'game_state.json'
