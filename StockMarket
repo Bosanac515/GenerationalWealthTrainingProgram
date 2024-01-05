@@ -1,13 +1,13 @@
 import requests
 
-# Replace 'YOUR_API_KEY' with your actual API key
-API_KEY = 'YOUR_API_KEY'
+API_KEY = 'P2XPY4BU3ZX6ICDC'
 
-def get_stock_data(symbol):
+def get_latest_stock_price(symbol):
     base_url = "https://www.alphavantage.co/query"
     params = {
-        "function": "TIME_SERIES_DAILY",
+        "function": "TIME_SERIES_INTRADAY",
         "symbol": symbol,
+        "interval": "5min",  # Change the interval as needed (1min, 5min, 15min, etc.)
         "apikey": API_KEY
     }
 
@@ -15,18 +15,21 @@ def get_stock_data(symbol):
 
     if response.status_code == 200:
         data = response.json()
-        return data
+        latest_refresh = data['Meta Data']['3. Last Refreshed']
+        latest_price = data['Time Series (5min)'][latest_refresh]['4. close']
+        return float(latest_price)  # Convert the price to a float
     else:
         print("Failed to fetch data:", response.status_code)
         return None
 
 def main():
-    symbol = 'AAPL'  # Replace with the desired stock symbol
-    stock_data = get_stock_data(symbol)
+    symbol = input("Enter the stock symbol (e.g., AAPL): ").upper()  # Allow user input for stock symbol
+    latest_price = get_latest_stock_price(symbol)
 
-    if stock_data:
-        # Process or display the fetched data
-        print(stock_data)
+    if latest_price is not None:
+        print(f"The latest price for {symbol} is: ${latest_price:.2f} (Data delayed by 15-20 minutes)")  # Display with two decimal places
+    else:
+        print("Failed to fetch the price.")
 
 if __name__ == "__main__":
     main()
