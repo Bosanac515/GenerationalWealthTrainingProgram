@@ -1,0 +1,144 @@
+import random
+import time
+import math
+
+# Define the spin_slots function
+def spin_slots():
+    symbols = {
+        'Cherry': {'multiplier': 1.5, 'match_2': 10},
+        'Lemon': {'multiplier': 1.3, 'match_2': 5},
+        'Orange': {'multiplier': 1.4, 'match_2': 8},
+        'Plum': {'multiplier': 1.6, 'match_2': 15},
+        'Bell': {'multiplier': 1.8, 'match_2': 20},
+        'Bar': {'multiplier': 2.0, 'match_2': 25},
+        'Seven': {'multiplier': 2.5, 'match_2': 30}
+    }
+
+    # Spin the slots with animation
+    print("\nSpinning the slots...")
+    for _ in range(3):
+        time.sleep(0.5)
+        print("\n".join("|".join(random.choice(list(symbols.keys())) for _ in range(3)) for _ in range(3)))
+
+    # Pause before displaying the final result
+    time.sleep(1)
+
+    # Spin the slots
+    slots = [[random.choice(list(symbols.keys())) for _ in range(3)] for _ in range(3)]
+
+    # Check for winning patterns
+    total_win = 0
+    for i in range(3):
+        if slots[i][0] == slots[i][1] == slots[i][2]:
+            total_win += symbols[slots[i][0]]['multiplier'] * symbols[slots[i][0]]['match_2']
+        if slots[0][i] == slots[1][i] == slots[2][i]:
+            total_win += symbols[slots[0][i]]['multiplier'] * symbols[slots[0][i]]['match_2']
+
+    if slots[0][0] == slots[1][1] == slots[2][2]:
+        total_win += symbols[slots[0][0]]['multiplier'] * symbols[slots[0][0]]['match_2']
+
+    if slots[0][2] == slots[1][1] == slots[2][0]:
+        total_win += symbols[slots[0][2]]['multiplier'] * symbols[slots[0][2]]['match_2']
+
+    # Check for matching two symbols
+    for symbol in symbols:
+        symbol_count = sum(row.count(symbol) for row in slots)
+        if symbol_count == 2:
+            total_win += symbols[symbol]['multiplier'] * symbols[symbol]['match_2']
+
+    return total_win
+
+# Function to display bet factor goals
+def display_bet_factor_goals(balance):
+    goals = [0.1, 0.25, 0.5, 0.75]  # Bet factor goals (10%, 25%, 50%, 75%)
+    for goal in goals:
+        bet_goal = balance * goal
+        print(f"Bet factor goal {int(goal * 100)}%: Bet ${bet_goal:.2f} to achieve.")
+
+# Function to play the slots
+def play_slots(bet, balance, prev_winnings=0):
+    if bet <= 0:
+        print("Invalid bet. Please enter a positive amount.")
+        return 0
+
+    if bet > balance:
+        print("Insufficient balance. Please place a smaller bet.")
+        return 0
+
+    print(f"\nYour current balance: ${balance}")
+    print(f"Placing a bet of ${bet} on the slots...")
+
+    bet_percentage = bet / balance
+
+    # Check if any bet factor goals are reached and display the message
+    goals_reached = [0.1, 0.25, 0.5, 0.75]  # Bet factor goals (10%, 25%, 50%, 75%)
+    percentage_bonus = 0
+    for goal in goals_reached:
+        if bet_percentage >= goal:
+            bonus = goal * bet
+            percentage_bonus += bonus
+            print(f"Congratulations! You've reached the {int(goal * 100)}% bet factor goal. Bonus: ${bonus:.2f}")
+
+    # Calculate winnings based on the bet amount and add the percentage bonus
+    winning_factor = 1.0
+    total_win = spin_slots()
+    winnings = int(bet * winning_factor) + total_win + percentage_bonus + prev_winnings
+
+    # Round up the winnings to the nearest dollar
+    winnings = math.ceil(winnings)
+
+    if total_win > 0:
+        print(f"\nCongratulations! You win ${total_win}!")
+    else:
+        print("\nSorry, no win this time. Better luck next time.")
+
+    return winnings, percentage_bonus
+
+# Function to display welcome message
+def display_welcome():
+    print("Welcome to the Casino Slot Machine!")
+    print("Enjoy the excitement of a real casino.")
+
+# Function to display goodbye message
+def display_goodbye(balance):
+    print("\nThanks for playing! Here's your final result:")
+    print(f"Final Balance: ${balance}")
+
+# Main game logic
+if __name__ == "__main__":
+    display_welcome()
+
+    initial_balance = 1000
+    balance = initial_balance
+    winnings = 0
+
+    while balance > 0:
+        try:
+            print("\n=== New Round ===")
+            print(f"Your current balance: ${balance}")
+            bet = int(input("Place your bet (or enter 0 to exit): $"))
+        except ValueError:
+            print("Invalid input. Please enter a valid number.")
+            continue
+
+        if bet == 0:
+            print("Exiting the game. Thanks for playing!")
+            break
+
+        round_winnings, extra_winnings = play_slots(bet, balance, prev_winnings=winnings)
+        balance += round_winnings - bet + winnings  # Add previous round's winnings to the balance
+        balance = min(initial_balance, balance)
+        winnings += extra_winnings
+
+        if round_winnings < 0:
+            print(f"You lost ${abs(round_winnings)}.")
+        else:
+            print(f"You gained ${round_winnings - bet}.")
+            if extra_winnings > 0:
+                print(f"You won an extra ${extra_winnings} by reaching a bet factor goal!")
+
+        play_again = input("Do you want to play again? (yes/no): ").lower()
+        if play_again != 'yes':
+            break
+
+    display_goodbye(balance)
