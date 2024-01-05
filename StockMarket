@@ -1,35 +1,158 @@
-import requests
+import os
+import yfinance as yf
+import logging
+import random
+import json
+from colorama import Fore, Style
+import matplotlib.pyplot as plt
+import time
 
-API_KEY = 'P2XPY4BU3ZX6ICDC'
+# Constants
+STOCK_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA']
+SAVE_FILE = 'game_state.json'
+DATA_DIR = 'data'
+os.makedirs(DATA_DIR, exist_ok=True)
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-def get_latest_stock_price(symbol):
-    base_url = "https://www.alphavantage.co/query"
-    params = {
-        "function": "TIME_SERIES_INTRADAY",
-        "symbol": symbol,
-        "interval": "5min",  # Change the interval as needed (1min, 5min, 15min, etc.)
-        "apikey": API_KEY
-    }
+class StockGame:
+    def __init__(self):
+        self.symbol, self.balance, self.portfolio, self.transaction_history = None, None, None, None
+        self.select_stock_symbol()
+        self.load_game_state()
 
-    response = requests.get(base_url, params=params)
+    def select_stock_symbol(self):
+        logging.info(f"{Fore.BLUE}Select a stock symbol from the following list:{Style.RESET_ALL}")
+        for i, symbol in enumerate(STOCK_SYMBOLS, start=1):
+            logging.info(f"{i}. {symbol}")
+        while True:
+            try:
+                choice = int(input("Enter the number corresponding to your choice: "))
+                if 1 <= choice <= len(STOCK_SYMBOLS):
+                    self.symbol = STOCK_SYMBOLS[choice - 1]
+                    break
+            except ValueError:
+                pass
 
-    if response.status_code == 200:
-        data = response.json()
-        latest_refresh = data['Meta Data']['3. Last Refreshed']
-        latest_price = data['Time Series (5min)'][latest_refresh]['4. close']
-        return float(latest_price)  # Convert the price to a float
-    else:
-        print("Failed to fetch data:", response.status_code)
-        return None
+    def load_game_state(self):
+        if os.path.exists(SAVE_FILE):
+            with open(SAVE_FILE, 'r') as file:
+                data = json.load(file)
+                self.balance, self.portfolio, self.transaction_history = data['balance'], data['portfolio'], data['transaction_history']
+        else:
+            self.balance = 10000
+            self.portfolio = {self.symbol: {"quantity": 5, "average_price": 150.0}}
+            self.transaction_history = []
 
-def main():
-    symbol = input("Enter the stock symbol (e.g., AAPL): ").upper()  # Allow user input for stock symbol
-    latest_price = get_latest_stock_price(symbol)
+    def get_realtime_stock_price(self):
+        try:
+            data = yf.Ticker(self.symbol).history(period='1d')
+            return data['Close'].iloc[-1]
+        except Exception as e:
+            logging.error(f"Failed to fetch real-time stock data for {self.symbol}: {e}")
+            return None
 
-    if latest_price is not None:
-        print(f"The latest price for {symbol} is: ${latest_price:.2f} (Data delayed by 15-20 minutes)")  # Display with two decimal places
-    else:
-        print("Failed to fetch the price.")
+    def simulate_market_movement(self, price):
+        return price * (1 + random.uniform(-1, 1))
+
+    def simulate_stock_game(self, action, quantity):
+        stock_price = self.get_realtime_stock_price()
+        if stock_price:
+            getattr(self, f"{action}_stock")(stock_price, quantity)
+
+    def buy_stock(self, stock_price, quantity):
+        cost = stock_price * quantity
+        if cost <= self.balance:
+            self.balance -= cost
+            self.update_portfolio(stock_price, quantity, "buy")
+
+    def sell_stock(self, stock_price, quantity):
+        if self.symbol in self.portfolio and self.portfolio[self.symbol]["quantity"] >= quantity:
+            self.balance += stock_price * quantity
+            self.update_portfolio(stock_price, quantity, "sell")
+
+    def update_portfolio(self, stock_price, quantity, action):
+        stock_data = self.portfolio.setdefault(self.symbol, {"quantity": 0, "average_price": 0})
+        if action == "buy":
+            stock_data["quantity"] += quantity
+            stock_data["average_price"] = ((stock_data["average_price"] * (stock_data["quantity"] - quantity)) +
+                                           (stock_price * quantity)) / stock_data["quantity"]
+        elif action == "sell":
+            stock_data["quantity"] -= quantity
+        self.transaction_history.append({"action": action, "quantity": quantity, "price": stock_price})
+
+    def display_portfolio(self):
+        logging.info(f"{Fore.CYAN}Portfolio:{Style.RESET_ALL}")
+        for stock, data in self.portfolio.items():
+            total_value = data["quantity"] * self.simulate_market_movement(data["average_price"])
+            logging.info(f"{stock}: {data['quantity']} shares (Avg. Price: ${data['average_price']:.2f}), "
+                         f"Total Value: ${total_value:.2f}")
+        logging.info(f"{Fore.CYAN}Total Balance: ${self.balance:.2f}{Style.RESET_ALL}")
+
+    def display_transaction_history(self):
+        logging.info(f"{Fore.YELLOW}Transaction History:{Style.RESET_ALL}")
+        for transaction in self.transaction_history:
+            logging.info(f"Action: {transaction['action']}, Quantity: {transaction['quantity']}, "
+                         f"Price: ${transaction['price']:.2f}")
+
+    def save_game_state(self):
+        game_state = {"balance": self.balance, "portfolio": self.portfolio, "transaction_history": self.transaction_history}
+        with open(SAVE_FILE, 'w') as file:
+            json.dump(game_state, file)
+        logging.info(f"{Fore.GREEN}Game state saved successfully.{Style.RESET_ALL}")
+
+    def plot_stock_prices(self):
+        try:
+            data = yf.Ticker(self.symbol).history(period='30d')
+            plt.figure(figsize=(10, 5))
+            plt.plot(data['Close'], label='Closing Prices')
+            plt.title(f'{self.symbol} Stock Prices')
+            plt.xlabel('Date')
+            plt.ylabel('Price (USD)')
+            plt.legend()
+            image_path = os.path.join(DATA_DIR, f'{self.symbol}_stock_prices_plot.png')
+            plt.savefig(image_path)
+            plt.close()
+            logging.info(f"Stock prices plot saved successfully. View the plot using the full file path:")
+            logging.info(f"File: {os.path.abspath(image_path)}")
+        except Exception as e:
+            logging.error(f"Failed to plot stock prices for {self.symbol}: {e}")
+
+    def switch_stock(self):
+        self.select_stock_symbol()
+        self.load_game_state()
+
+    def print_menu(self):
+        logging.info(f"{Fore.BLUE}------ MENU ------{Style.RESET_ALL}")
+        logging.info("1. Display Portfolio")
+        logging.info("2. Buy Stocks")
+        logging.info("3. Sell Stocks")
+        logging.info("4. Display Transaction History")
+        logging.info("5. Save Game")
+        logging.info("6. Plot Stock Prices")
+        logging.info("7. Switch Stock")
+        logging.info("8. Quit")
+        logging.info(f"{Fore.BLUE}------------------{Style.RESET_ALL}")
+
+    def menu_option(self, option):
+        options = {
+            1: self.display_portfolio,
+            2: lambda: self.simulate_stock_game("buy", int(input("Enter quantity to buy: "))),
+            3: lambda: self.simulate_stock_game("sell", int(input("Enter quantity to sell: "))),
+            4: self.display_transaction_history,
+            5: self.save_game_state,
+            6: self.plot_stock_prices,
+            7: self.switch_stock,
+            8: lambda: logging.info("Thank you for playing. Exiting.")
+        }
+        options.get(option, lambda: None)()
+
+    def run(self):
+        while True:
+            stock_price = self.simulate_market_movement(self.get_realtime_stock_price() or 0)
+            self.print_menu()
+            choice = input("Enter your choice (1-8): ")
+            self.menu_option(int(choice))
+            time.sleep(5)  # Sleep for 5 seconds before the next update
 
 if __name__ == "__main__":
-    main()
+    StockGame().run()
