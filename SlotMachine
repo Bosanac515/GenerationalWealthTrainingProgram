@@ -110,9 +110,9 @@ if __name__ == "__main__":
 
     initial_balance = 1000
     balance = initial_balance
-    winnings = 0
 
     while balance > 0:
+        total_winnings = 0  # Reset total winnings for each round
         try:
             print("\n=== New Round ===")
             print(f"Your current balance: ${balance}")
@@ -125,15 +125,13 @@ if __name__ == "__main__":
             print("Exiting the game. Thanks for playing!")
             break
 
-        round_winnings, extra_winnings = play_slots(bet, balance, prev_winnings=winnings)
-        balance += round_winnings - bet + winnings  # Add previous round's winnings to the balance
-        balance = min(initial_balance, balance)
-        winnings += extra_winnings
+        round_winnings, extra_winnings = play_slots(bet, balance, prev_winnings=0)
+        balance -= bet  # Deduct the bet amount
 
-        if round_winnings < 0:
-            print(f"You lost ${abs(round_winnings)}.")
-        else:
-            print(f"You gained ${round_winnings - bet}.")
+        if round_winnings > 0:
+            total_winnings += round_winnings + extra_winnings  # Add total winnings to the balance
+            balance += total_winnings  # Add total winnings to the balance
+            print(f"You gained ${round_winnings - bet + extra_winnings}.")
             if extra_winnings > 0:
                 print(f"You won an extra ${extra_winnings} by reaching a bet factor goal!")
 
