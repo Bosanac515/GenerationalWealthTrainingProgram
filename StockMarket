@@ -18,11 +18,19 @@ class StockGame:
         self.select_stock_symbol()
         self.load_game_state()
         self.create_widgets()
+        self.display_portfolio()  # Display portfolio initially
 
     def select_stock_symbol(self):
         self.symbol = tk.StringVar(self.root)
         self.symbol.set(STOCK_SYMBOLS[0])  # default value
+        self.symbol.trace_add('write', self.on_symbol_change)  # Track changes to the symbol
+
+        # OptionMenu for selecting stock symbol
         tk.OptionMenu(self.root, self.symbol, *STOCK_SYMBOLS).pack()
+
+    def on_symbol_change(self, *args):
+        self.display_portfolio()  # Display portfolio when symbol changes
+        self.update_stock_data()  # Fetch new data for the selected symbol and update display
 
     def load_game_state(self):
         if os.path.exists(SAVE_FILE):
@@ -31,13 +39,14 @@ class StockGame:
                 self.balance, self.portfolio, self.transaction_history = data['balance'], data['portfolio'], data['transaction_history']
         else:
             self.balance = 10000
-            self.portfolio = {self.symbol.get(): {"quantity": 5, "average_price": 150.0}}
+            self.portfolio = {self.symbol.get(): {"quantity": 0, "average_price": 150.0}}
             self.transaction_history = []
 
     def get_realtime_stock_price(self):
         try:
             data = yf.Ticker(self.symbol.get()).history(period='1d')
-            return data['Close'].iloc[-1]
+            stock_price = data['Close'].iloc[-1]
+            return stock_price
         except Exception as e:
             messagebox.showerror("Error", f"Failed to fetch real-time stock data for {self.symbol.get()}: {e}")
             return None
@@ -47,19 +56,30 @@ class StockGame:
 
     def simulate_stock_game(self, action, quantity):
         stock_price = self.get_realtime_stock_price()
-        if stock_price:
-            getattr(self, f"{action}_stock")(stock_price, quantity)
+        if stock_price is not None:
+            if action == "buy":
+                self.buy_stock(stock_price, quantity)
+            elif action == "sell":
+                self.sell_stock(stock_price, quantity)
+            else:
+                messagebox.showerror("Error", "Invalid action")
+        else:
+            messagebox.showerror("Error", "Failed to fetch stock price")
 
     def buy_stock(self, stock_price, quantity):
         cost = stock_price * quantity
         if cost <= self.balance:
             self.balance -= cost
             self.update_portfolio(stock_price, quantity, "buy")
+        else:
+            messagebox.showerror("Error", "Insufficient balance")
 
     def sell_stock(self, stock_price, quantity):
         if self.symbol.get() in self.portfolio and self.portfolio[self.symbol.get()]["quantity"] >= quantity:
             self.balance += stock_price * quantity
             self.update_portfolio(stock_price, quantity, "sell")
+        else:
+            messagebox.showerror("Error", "Insufficient stock quantity")
 
     def update_portfolio(self, stock_price, quantity, action):
         stock_data = self.portfolio.setdefault(self.symbol.get(), {"quantity": 0, "average_price": 0})
@@ -81,10 +101,24 @@ class StockGame:
             self.tree.insert('', 'end', values=(stock, data['quantity'], f"${stock_price:.2f}", f"${total_value:.2f}"))
         self.balance_label.config(text=f"Total Balance: ${self.balance:.2f}")
 
+    def update_stock_data(self):
+        # Fetch new data for the selected symbol
+        stock_price = self.get_realtime_stock_price()
+        if stock_price is not None:
+            # Update the display with the new data
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            stock = self.symbol.get()
+            data = self.portfolio.get(stock, {"quantity": 0, "average_price": 0})
+            total_value = data["quantity"] * stock_price
+            self.tree.insert('', 'end', values=(stock, data['quantity'], f"${stock_price:.2f}", f"${total_value:.2f}"))
+
     def create_widgets(self):
+        # Label to display total balance
         self.balance_label = tk.Label(self.root, text=f"Total Balance: ${self.balance:.2f}")
         self.balance_label.pack()
 
+        # Treeview to display portfolio
         self.tree = ttk.Treeview(self.root)
         self.tree["columns"]=("one","two","three","four")
         self.tree.column("#0", width=0, stretch=tk.NO)
@@ -100,9 +134,11 @@ class StockGame:
 
         self.tree.pack()
 
+        # Buy button
         self.buy_button = tk.Button(self.root, text="Buy", command=lambda: self.simulate_stock_game("buy", 1))
         self.buy_button.pack()
 
+        # Sell button
         self.sell_button = tk.Button(self.root, text="Sell", command=lambda: self.simulate_stock_game("sell", 1))
         self.sell_button.pack()
 
