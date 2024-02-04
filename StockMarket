@@ -15,9 +15,23 @@ class StockGame:
     def __init__(self, root):
         self.root = root
         self.symbol, self.balance, self.portfolio, self.transaction_history = None, None, None, None
-        self.select_stock_symbol()
+        self.init_home_screen()
         self.load_game_state()
+
+    def init_home_screen(self):
+        # Home Screen Frame
+        self.home_frame = tk.Frame(self.root)
+        self.home_frame.pack(fill="both", expand=True)
+
+        tk.Label(self.home_frame, text="Welcome to the Stock Market Game", font=("Arial", 16)).pack(pady=20)
+
+        tk.Button(self.home_frame, text="Start Trading", command=self.start_trading).pack()
+
+    def start_trading(self):
+        # Clear the home screen
+        self.home_frame.pack_forget()
         self.create_widgets()
+        self.select_stock_symbol()
         self.display_portfolio()  # Display portfolio initially
 
     def select_stock_symbol(self):
@@ -39,7 +53,7 @@ class StockGame:
                 self.balance, self.portfolio, self.transaction_history = data['balance'], data['portfolio'], data['transaction_history']
         else:
             self.balance = 10000
-            self.portfolio = {self.symbol.get(): {"quantity": 0, "average_price": 150.0}}
+            self.portfolio = {symbol: {"quantity": 0, "average_price": 150.0} for symbol in STOCK_SYMBOLS}
             self.transaction_history = []
 
     def get_realtime_stock_price(self):
@@ -141,7 +155,11 @@ class StockGame:
         # Sell button
         self.sell_button = tk.Button(self.root, text="Sell", command=lambda: self.simulate_stock_game("sell", 1))
         self.sell_button.pack()
-
+# Initialize the main application window
 root = tk.Tk()
+root.title("Stock Market Game")
+
 app = StockGame(root)
+
+# Start the Tkinter event loop
 root.mainloop()
